@@ -1,0 +1,6 @@
+loadstring(game:HttpGet("https://api.luarmor.net/files/v3/loaders/9cfaf7193fd721277d8a7b8bbf394315.lua"))()
+for PlaceID, Execute in pairs(Games) do
+    if PlaceID == game.PlaceId then
+        loadstring(game:HttpGet(Execute))()
+    end
+end
