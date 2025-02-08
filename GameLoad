@@ -2,5 +2,7 @@ loadstring(game:HttpGet("https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/
 for PlaceID, Execute in pairs(Games) do
     if PlaceID == game.PlaceId then
         loadstring(game:HttpGet(Execute))()
+    else
+        print("failed to load")
     end
 end
