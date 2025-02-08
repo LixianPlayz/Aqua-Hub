@@ -6,3 +6,4 @@ getgenv().Games = {
 	[16732694052] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Fisch.lua",
 	[286090429] = "https://raw.githubusercontent.com/tbao143/thaibao/main/TbaoHubArsenal",
 }
+print "failed to load"
