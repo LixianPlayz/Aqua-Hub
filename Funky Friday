@@ -223,7 +223,7 @@ coroutine.wrap(updateTimer)()
 
 Tabs.Updates:AddButton({
     Title = "Backup Discord Server",
-    Description = "Discord Invite, Uni",
+    Description = "Discord Invite, Uni Hub",
     Callback = function()
         setclipboard("https://discord.gg/44PHnFKxq5")
         Fluent:Notify({Title = "Uni Hub", Content = "Copied Successfuly", Duration = 2})
