@@ -1,5 +1,5 @@
 getgenv().Games = {
-	[6447798030] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Funky%20Friday", "https://raw.githubusercontent.com/EdgeIY/infiniteyield/master/source",
+	[6447798030] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Funky%20Friday",
 	[2636441885] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Speed%20City%20Trillionaire",
 	[4566572536] = "https://raw.githubusercontent.com/Marco8642/science/main/Vehicle%20legends",
 	[3623096087] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Muscle%20Legends.lua",
