@@ -160,7 +160,7 @@ end)
 local Keybind = Tabs.Main:AddKeybind("Keybind", {
     Title = "Auto Player Keybind",
     Mode = "Toggle",
-    Default = "Insert",
+    Default = "G",
 
     Callback = function(Value)
         if Toggle.Value then
