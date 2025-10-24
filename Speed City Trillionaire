@@ -9,6 +9,7 @@ Button.Position = UDim2.new(0.5, -100, 0.5, -25)
 Button.Text = "By Lixian. Autoclick for loop."
 Button.Parent = ScreenGui
 Button.MouseButton1Click:Connect(function()
-    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(game:GetService("Workspace").TrillionaireCity.TrillionaireOrbs.Trillionaire.Outside.Position)
+    game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(game:GetService("Workspace").GhostCity.GhostOrbsMega.GhostMega.Outside.Position)
     print("orb collected")
 end)
+    
