@@ -1,0 +1,136 @@
+-- Place ID check
+if game.PlaceId ~= 86076978383613 then
+    warn("Error. Wrong. Game.")
+    return
+end
+
+
+local player = game.Players.LocalPlayer
+local char = player.Character or player.CharacterAdded:Wait()
+local root = char:WaitForChild("HumanoidRootPart")
+
+local running = false
+local zombieRunning = false
+local gateCycleFinished = false
+
+-- GUI
+local gui = Instance.new("ScreenGui")
+gui.Name = "TeleportGui"
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- Gate cycle button (slightly left and down)
+local cycleButton = Instance.new("TextButton")
+cycleButton.Size = UDim2.new(0, 200, 0, 60)
+cycleButton.Position = UDim2.new(0.5, -130, 0.78, 0)
+cycleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+cycleButton.Text = "Start Gate Cycle"
+cycleButton.Parent = gui
+
+-- Flags and connections
+local keysPressed = {}
+local inputConnection
+
+-- Kill switch
+local function KILL()
+    running = false
+    zombieRunning = false
+    gateCycleFinished = false
+    if inputConnection then
+        inputConnection:Disconnect()
+        inputConnection = nil
+    end
+    if gui then
+        gui:Destroy()
+    end
+end
+
+-- Input handling
+inputConnection = game:GetService("UserInputService").InputBegan:Connect(function(input, gpe)
+    if gpe then return end
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        keysPressed[input.KeyCode] = true
+
+        -- Kill switch 5 + 6
+        if keysPressed[Enum.KeyCode.Five] and keysPressed[Enum.KeyCode.Six] then
+            KILL()
+        end
+
+        -- Teleport to zombies loop (10 repetitions)
+        if gateCycleFinished and input.KeyCode == Enum.KeyCode.Z and not zombieRunning then
+            zombieRunning = true
+            task.spawn(function()
+                task.wait(0.8) -- wait before starting
+                local lastRootCFrame = root.CFrame
+                local repeatCount = 0
+
+                while zombieRunning and repeatCount < 5 do
+                    local zombieFolder = game.Workspace.Entities.Zombie
+                    local zombieGroups = zombieFolder:GetChildren()
+                    if #zombieGroups == 0 then break end
+
+                    for _, zGroup in ipairs(zombieGroups) do
+                        if not zombieRunning then break end
+                        local hrp = zGroup:FindFirstChild("HumanoidRootPart", true)
+                        if hrp then
+                            root.CFrame = hrp.CFrame + Vector3.new(0, 3, 0)
+                            task.wait(0.01)
+                            lastRootCFrame = root.CFrame
+                        end
+                    end
+
+                    -- detect external movement by game
+                    local distanceMoved = (root.CFrame.Position - lastRootCFrame.Position).Magnitude
+                    if distanceMoved > 0.05 then
+                        zombieRunning = false
+                        break
+                    end
+
+                    repeatCount = repeatCount + 1
+                end
+
+                -- Reset after 10 repeats or interruption
+                zombieRunning = false
+                gateCycleFinished = false
+                cycleButton.Text = "Start Gate Cycle"
+                cycleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
+            end)
+        end
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Keyboard then
+        keysPressed[input.KeyCode] = false
+    end
+end)
+
+-- Gate teleporting cycle (slower: 0.6 seconds per teleport)
+cycleButton.MouseButton1Click:Connect(function()
+    if running then return end
+    running = true
+    gateCycleFinished = false
+    cycleButton.Text = "Running Gate Cycle..."
+    cycleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+
+    local doorsFolder = game.Workspace.Island:WaitForChild("Doors")
+
+    while running do
+        local gates = doorsFolder:GetChildren()
+        if #gates == 0 then break end
+
+        for _, gate in ipairs(gates) do
+            if not running then break end
+            local part = gate:FindFirstChildWhichIsA("BasePart") or gate:FindFirstChild("Fence Door")
+            if part then
+                root.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+                task.wait(0.6)
+            end
+        end
+        task.wait(0.6)
+    end
+
+    gateCycleFinished = true
+    cycleButton.Text = "Press Z for Zombies"
+    cycleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
+    running = false
+end)
