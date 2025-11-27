@@ -63,7 +63,7 @@ inputConnection = game:GetService("UserInputService").InputBegan:Connect(functio
                 local lastRootCFrame = root.CFrame
                 local repeatCount = 0
 
-                while zombieRunning and repeatCount < 5 do
+                while zombieRunning and repeatCount < 10 do
                     local zombieFolder = game.Workspace.Entities.Zombie
                     local zombieGroups = zombieFolder:GetChildren()
                     if #zombieGroups == 0 then break end
@@ -110,7 +110,7 @@ cycleButton.MouseButton1Click:Connect(function()
     running = true
     gateCycleFinished = false
     cycleButton.Text = "Running Gate Cycle..."
-    cycleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    cycleButton.BackgroundColor3 = Color3.fromRGB(150, 0, 0)
 
     local doorsFolder = game.Workspace.Island:WaitForChild("Doors")
 
@@ -131,6 +131,6 @@ cycleButton.MouseButton1Click:Connect(function()
 
     gateCycleFinished = true
     cycleButton.Text = "Press Z for Zombies"
-    cycleButton.BackgroundColor3 = Color3.fromRGB(0, 0, 255)
+    cycleButton.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
     running = false
 end)
