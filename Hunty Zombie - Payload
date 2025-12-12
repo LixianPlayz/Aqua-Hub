@@ -1,0 +1,150 @@
+--========================================================--
+--                GAME ID CHECK (ADDED)
+--========================================================--
+if game.PlaceId ~= 86076978383613 then
+	warn("Wrong Game")
+    return
+end
+
+--========================================================--
+--                 PLAYER REFERENCE
+--========================================================--
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+-- Wait for character
+local function getChar()
+	return player.Character or player.CharacterAdded:Wait()
+end
+
+--========================================================--
+--                 TELEPORT FUNCTION
+--========================================================--
+local function tp(target)
+	local char = getChar()
+	local hrp = char:FindFirstChild("HumanoidRootPart")
+	if hrp and target then
+		hrp.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+	end
+end
+
+--========================================================--
+--                CONSTANT RETURN LOCATION
+--========================================================--
+local returnBase = workspace.City.Rooms.Spawn.BASE.Base
+
+--========================================================--
+--                WHEEL TELEPORT SYSTEM
+--========================================================--
+task.spawn(function()
+	local teleportedToWheel = false
+	local debounceReturn = false
+
+	while true do
+		task.wait(0.2)
+
+		-- Always search for newest wheel instance
+		local currentWheel = workspace:FindFirstChild("Terrain")
+			and workspace.Terrain:FindFirstChild("Wheel")
+			and workspace.Terrain.Wheel:FindFirstChild("Root") 
+			or nil
+
+		-- Teleport to wheel when it appears
+		if currentWheel and teleportedToWheel == false then
+			tp(currentWheel)
+			teleportedToWheel = true
+			debounceReturn = false
+		end
+
+		-- Wheel despawn detection
+		if teleportedToWheel and not currentWheel and debounceReturn == false then
+			debounceReturn = true
+
+			task.wait(0.3) -- double-check
+
+			local confirmGone = not (
+				workspace:FindFirstChild("Terrain")
+				and workspace.Terrain:FindFirstChild("Wheel")
+				and workspace.Terrain.Wheel:FindFirstChild("Root")
+			)
+
+			if confirmGone then
+				tp(returnBase)
+				teleportedToWheel = false
+				debounceReturn = false
+			else
+				debounceReturn = false
+			end
+		end
+	end
+end)
+
+--========================================================--
+--             PROXIMITY PROMPT AUTO-CONFIG
+--========================================================--
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+
+		local wheel = workspace:FindFirstChild("Terrain")
+			and workspace.Terrain:FindFirstChild("Wheel")
+			or nil
+
+		if wheel then
+			local root = wheel:FindFirstChild("Root")
+			if root then
+				local prompt = root:FindFirstChildOfClass("ProximityPrompt")
+				if prompt then
+					prompt.HoldDuration = 0
+					prompt.MaxActivationDistance = 100
+				end
+			end
+		end
+	end
+end)
+
+--========================================================--
+--                BOOST + HEALTH AUTO PICKUP
+--========================================================--
+local function fireTouch(item)
+	local char = getChar()
+	local head = char:FindFirstChild("Head")
+	if head then
+		firetouchinterest(item, head, 1)
+		task.wait()
+		firetouchinterest(item, head, 0)
+	end
+end
+
+-- Loop that constantly detects new Boost or Health items
+task.spawn(function()
+	while true do
+		task.wait(0.15)
+
+		local itemsFolder = workspace:FindFirstChild("Items")
+		if itemsFolder then
+
+			-- BOOSTS
+			for _, boost in ipairs(itemsFolder:GetChildren()) do
+				if boost:FindFirstChild("PickupHitbox") then
+					local hitbox = boost.PickupHitbox
+					local ti = hitbox:FindFirstChild("TouchInterest")
+					if ti then
+						fireTouch(hitbox)
+					end
+				end
+			end
+
+			-- HEALTHS
+			for _, health in ipairs(itemsFolder:GetChildren()) do
+				if health:FindFirstChild("PickupHitbox") then
+					local hitbox = health.PickupHitbox
+					local ti = hitbox:FindFirstChild("TouchInterest")
+					if ti then
+						fireTouch(hitbox)
+					end
+				end
+			end
+		end
+	end
+end)
