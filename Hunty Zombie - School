@@ -1,0 +1,224 @@
+--========================================================--
+-- SERVICES
+--========================================================--
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+--========================================================--
+-- DOOR LOGIC
+--========================================================--
+local DoorsFolder = workspace.School.Doors
+local HALLWAY = "HallwayDoor"
+local DOOR01  = "Door01"
+local FENCE   = "FenceDoor"
+
+local running = false
+
+local function getHRP()
+	local char = player.Character or player.CharacterAdded:Wait()
+	return char:WaitForChild("HumanoidRootPart")
+end
+
+local function tpToDoor(door)
+	local hrp = getHRP()
+	local part = door:IsA("BasePart") and door or door:FindFirstChildWhichIsA("BasePart")
+	if part then
+		hrp.CFrame = part.CFrame + Vector3.new(0, 3, 0)
+	end
+	task.wait(0.15)
+end
+
+local function runRoute(onFinished)
+	if running then return end
+	running = true
+
+	local fenceDoors, routeDoors = {}, {}
+
+	for _, door in ipairs(DoorsFolder:GetChildren()) do
+		if door.Name == FENCE then
+			table.insert(fenceDoors, door)
+		elseif door.Name == HALLWAY or door.Name == DOOR01 then
+			table.insert(routeDoors, door)
+		end
+	end
+
+	local targets = (#fenceDoors > 0) and fenceDoors or routeDoors
+
+	for _ = 1, 2 do
+		for _, door in ipairs(targets) do
+			tpToDoor(door)
+		end
+	end
+
+	running = false
+	if onFinished then onFinished() end
+end
+
+--========================================================--
+-- GUI
+--========================================================--
+local gui = Instance.new("ScreenGui")
+gui.Name = "WaterfallMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+-- MENU
+local menu = Instance.new("Frame")
+menu.Size = UDim2.fromScale(0.25, 0.06)
+menu.Position = UDim2.fromScale(0.375, 0.05)
+menu.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+menu.BorderSizePixel = 0
+menu.Parent = gui
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0.08, 0)
+
+local grad = Instance.new("UIGradient")
+grad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,170)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(30,30,30))
+}
+grad.Rotation = 90
+grad.Parent = menu
+
+local menuLabel = Instance.new("TextLabel")
+menuLabel.Size = UDim2.fromScale(1,1)
+menuLabel.BackgroundTransparency = 1
+menuLabel.Text = "Press (F)"
+menuLabel.TextScaled = true
+menuLabel.Font = Enum.Font.GothamBold
+menuLabel.TextColor3 = Color3.fromRGB(0,200,185)
+menuLabel.Parent = menu
+
+--========================================================--
+-- LINE
+--========================================================--
+local line = Instance.new("Frame")
+line.Size = UDim2.new(menu.Size.X.Scale, 0, 0.003, 0)
+line.Position = menu.Position
+line.BackgroundColor3 = Color3.fromRGB(0,190,180)
+line.BorderSizePixel = 0
+line.Visible = false
+line.Parent = gui
+
+--========================================================--
+-- RUN BUTTON (OPTIONAL MANUAL)
+--========================================================--
+local runButton = Instance.new("TextButton")
+runButton.Size = UDim2.new(menu.Size.X.Scale, 0, menu.Size.Y.Scale * 0.55, 0)
+runButton.Position = menu.Position
+runButton.BackgroundColor3 = menu.BackgroundColor3
+runButton.BackgroundTransparency = 0.15
+runButton.Text = "Run Route"
+runButton.TextScaled = true
+runButton.Font = Enum.Font.GothamBold
+runButton.TextColor3 = Color3.fromRGB(0,200,185)
+runButton.Visible = false
+runButton.Parent = gui
+Instance.new("UICorner", runButton).CornerRadius = UDim.new(0.08, 0)
+
+--========================================================--
+-- POSITIONS
+--========================================================--
+local lineOpenY   = menu.Position.Y.Scale + menu.Size.Y.Scale
+local buttonOpenY = lineOpenY + (menu.Size.Y.Scale * 0.25)
+local offscreenY  = 1.25
+
+--========================================================--
+-- STATE
+--========================================================--
+local open = false
+local animating = false
+local activeTweens = {}
+
+local function killTweens()
+	for _, tween in ipairs(activeTweens) do
+		if tween then tween:Cancel() end
+	end
+	table.clear(activeTweens)
+end
+
+--========================================================--
+-- OPEN MENU
+--========================================================--
+local function openMenu()
+	if animating or open then return end
+	animating = true
+	open = true
+
+	killTweens()
+
+	line.Position = menu.Position
+	runButton.Position = menu.Position
+	line.Visible = true
+	runButton.Visible = true
+
+	local lineTween = TweenService:Create(
+		line,
+		TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(line.Position.X.Scale, 0, lineOpenY, 0) }
+	)
+
+	local btnTween = TweenService:Create(
+		runButton,
+		TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Position = UDim2.new(runButton.Position.X.Scale, 0, buttonOpenY, 0) }
+	)
+
+	activeTweens = {lineTween, btnTween}
+	lineTween:Play()
+	btnTween:Play()
+
+	btnTween.Completed:Once(function()
+		animating = false
+	end)
+end
+
+--========================================================--
+-- FORCE CLOSE MENU
+--========================================================--
+local function forceCloseMenu()
+	open = false
+	animating = true
+
+	killTweens()
+
+	local lineTween = TweenService:Create(
+		line,
+		TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(line.Position.X.Scale, 0, offscreenY, 0) }
+	)
+
+	local btnTween = TweenService:Create(
+		runButton,
+		TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ Position = UDim2.new(runButton.Position.X.Scale, 0, offscreenY, 0) }
+	)
+
+	lineTween:Play()
+	btnTween:Play()
+
+	btnTween.Completed:Once(function()
+		line.Visible = false
+		runButton.Visible = false
+		animating = false
+	end)
+end
+
+--========================================================--
+-- INPUT (F = OPEN + RUN)
+--========================================================--
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+	if input.KeyCode == Enum.KeyCode.F then
+		if running then return end
+		openMenu()
+		runRoute(forceCloseMenu)
+	end
+end)
+
+-- OPTIONAL MANUAL BUTTON
+runButton.MouseButton1Click:Connect(function()
+	runRoute(forceCloseMenu)
+end)
