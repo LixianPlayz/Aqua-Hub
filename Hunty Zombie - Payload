@@ -1,31 +1,28 @@
 --========================================================--
---                GAME ID CHECK (ADDED)
+--                GAME ID GATE
 --========================================================--
 if game.PlaceId ~= 86076978383613 then
-	warn("Wrong Game")
-    return
+	return
 end
 
 --========================================================--
---                 PLAYER REFERENCE
+--            SAFE PLAYER REFERENCE (LOCAL)
 --========================================================--
 local Players = game:GetService("Players")
-local player = Players.LocalPlayer
+local TweenService = game:GetService("TweenService")
 
--- Wait for character
-local function getChar()
-	return player.Character or player.CharacterAdded:Wait()
-end
+local player
+repeat
+	player = Players.LocalPlayer
+	task.wait()
+until player
 
---========================================================--
---                 TELEPORT FUNCTION
---========================================================--
-local function tp(target)
-	local char = getChar()
-	local hrp = char:FindFirstChild("HumanoidRootPart")
-	if hrp and target then
-		hrp.CFrame = target.CFrame + Vector3.new(0, 3, 0)
+local function getHRP()
+	local char = player.Character
+	if not char then
+		char = player.CharacterAdded:Wait()
 	end
+	return char:WaitForChild("HumanoidRootPart")
 end
 
 --========================================================--
@@ -34,33 +31,65 @@ end
 local returnBase = workspace.City.Rooms.Spawn.BASE.Base
 
 --========================================================--
+--                BASE HOLD (STARTS IMMEDIATELY)
+--========================================================--
+local holdingAtBase = true
+local baseTween
+
+local function runBaseHold()
+	task.spawn(function()
+		while holdingAtBase do
+			local hrp = getHRP()
+
+			if baseTween then
+				baseTween:Cancel()
+			end
+
+			baseTween = TweenService:Create(
+				hrp,
+				TweenInfo.new(0.2, Enum.EasingStyle.Linear),
+				{ CFrame = returnBase.CFrame + Vector3.new(0, 3, 0) }
+			)
+
+			baseTween:Play()
+			task.wait(0.1)
+		end
+	end)
+end
+
+local function stopBaseHold()
+	holdingAtBase = false
+	if baseTween then
+		baseTween:Cancel()
+		baseTween = nil
+	end
+end
+
+-- START BASE HOLD IMMEDIATELY ON SCRIPT EXECUTION
+runBaseHold()
+
+--========================================================--
 --                WHEEL TELEPORT SYSTEM
 --========================================================--
 task.spawn(function()
-	local teleportedToWheel = false
-	local debounceReturn = false
+	local atWheel = false
 
 	while true do
 		task.wait(0.2)
 
-		-- Always search for newest wheel instance
-		local currentWheel = workspace:FindFirstChild("Terrain")
+		local wheelRoot = workspace:FindFirstChild("Terrain")
 			and workspace.Terrain:FindFirstChild("Wheel")
-			and workspace.Terrain.Wheel:FindFirstChild("Root") 
+			and workspace.Terrain.Wheel:FindFirstChild("Root")
 			or nil
 
-		-- Teleport to wheel when it appears
-		if currentWheel and teleportedToWheel == false then
-			tp(currentWheel)
-			teleportedToWheel = true
-			debounceReturn = false
+		if wheelRoot and not atWheel then
+			stopBaseHold()
+			getHRP().CFrame = wheelRoot.CFrame + Vector3.new(0, 3, 0)
+			atWheel = true
 		end
 
-		-- Wheel despawn detection
-		if teleportedToWheel and not currentWheel and debounceReturn == false then
-			debounceReturn = true
-
-			task.wait(0.3) -- double-check
+		if atWheel and not wheelRoot then
+			task.wait(0.3)
 
 			local confirmGone = not (
 				workspace:FindFirstChild("Terrain")
@@ -69,11 +98,9 @@ task.spawn(function()
 			)
 
 			if confirmGone then
-				tp(returnBase)
-				teleportedToWheel = false
-				debounceReturn = false
-			else
-				debounceReturn = false
+				atWheel = false
+				holdingAtBase = true
+				runBaseHold()
 			end
 		end
 	end
@@ -88,7 +115,6 @@ task.spawn(function()
 
 		local wheel = workspace:FindFirstChild("Terrain")
 			and workspace.Terrain:FindFirstChild("Wheel")
-			or nil
 
 		if wheel then
 			local root = wheel:FindFirstChild("Root")
@@ -106,41 +132,23 @@ end)
 --========================================================--
 --                BOOST + HEALTH AUTO PICKUP
 --========================================================--
-local function fireTouch(item)
-	local char = getChar()
-	local head = char:FindFirstChild("Head")
-	if head then
-		firetouchinterest(item, head, 1)
-		task.wait()
-		firetouchinterest(item, head, 0)
-	end
+local function fireTouch(part)
+	local hrp = getHRP()
+	firetouchinterest(part, hrp, 1)
+	task.wait()
+	firetouchinterest(part, hrp, 0)
 end
 
--- Loop that constantly detects new Boost or Health items
 task.spawn(function()
 	while true do
 		task.wait(0.15)
 
 		local itemsFolder = workspace:FindFirstChild("Items")
 		if itemsFolder then
-
-			-- BOOSTS
-			for _, boost in ipairs(itemsFolder:GetChildren()) do
-				if boost:FindFirstChild("PickupHitbox") then
-					local hitbox = boost.PickupHitbox
-					local ti = hitbox:FindFirstChild("TouchInterest")
-					if ti then
-						fireTouch(hitbox)
-					end
-				end
-			end
-
-			-- HEALTHS
-			for _, health in ipairs(itemsFolder:GetChildren()) do
-				if health:FindFirstChild("PickupHitbox") then
-					local hitbox = health.PickupHitbox
-					local ti = hitbox:FindFirstChild("TouchInterest")
-					if ti then
+			for _, item in ipairs(itemsFolder:GetChildren()) do
+				if item:FindFirstChild("PickupHitbox") then
+					local hitbox = item.PickupHitbox
+					if hitbox:FindFirstChild("TouchInterest") then
 						fireTouch(hitbox)
 					end
 				end
