@@ -28,7 +28,7 @@ end
 --========================================================--
 --                CONSTANT RETURN LOCATION
 --========================================================--
-local returnBase = workspace.City.Rooms.Spawn.BASE.Base
+local returnBase = workspace["Christmas Village"].Rooms.Spawn.BASE.Base
 
 --========================================================--
 --                BASE HOLD (STARTS IMMEDIATELY)
