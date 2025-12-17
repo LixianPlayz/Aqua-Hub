@@ -1,0 +1,274 @@
+--========================================================--
+-- SERVICES
+--========================================================--
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
+
+local player = Players.LocalPlayer
+
+--========================================================--
+-- PLAYER ROOT
+--========================================================--
+local function getHRP()
+	local char = player.Character or player.CharacterAdded:Wait()
+	return char:WaitForChild("HumanoidRootPart")
+end
+
+local function tp(root)
+	local hrp = getHRP()
+	if root and root:IsA("BasePart") then
+		hrp.CFrame = root.CFrame + Vector3.new(0, 3, 0)
+	end
+	task.wait(0.7)
+end
+
+--========================================================--
+-- COMBINED DOOR LOGIC
+--========================================================--
+local running = false
+local zombieRunning = false
+local gateCycleFinished = false
+
+local ROUTES = {
+
+	-- Carnival
+	{
+		folder = workspace:FindFirstChild("Carnival") and workspace.Carnival:FindFirstChild("Doors"),
+		primary = { "Gate", "DoubleDoor" }
+	},
+
+	-- School
+	{
+		folder = workspace:FindFirstChild("School") and workspace.School:FindFirstChild("Doors"),
+		primary = { "FenceDoor", "HallwayDoor", "Door01" }
+	},
+
+	-- Sewers
+	{
+		folder = workspace:FindFirstChild("Sewers") and workspace.Sewers:FindFirstChild("Doors"),
+		primary = { "SingleDoor", "DoubleDoor" }
+	},
+
+	-- Island
+	{
+		folder = workspace:FindFirstChild("Island") and workspace.Island:FindFirstChild("Doors"),
+		primary = {} -- empty primary collects all doors
+	}
+}
+
+local function collectTargets(route)
+	if not route.folder then return {} end
+	local targets = {}
+	for _, door in ipairs(route.folder:GetChildren()) do
+		if #route.primary == 0 or table.find(route.primary, door.Name) then
+			local root = door:FindFirstChild("Root") or door:FindFirstChild("Part")
+			if root then
+				table.insert(targets, root)
+			elseif door:IsA("BasePart") then
+				table.insert(targets, door)
+			end
+		end
+	end
+	return targets
+end
+
+local function runRoute()
+	if running then return end
+	running = true
+
+	local targets = {}
+	for _, route in ipairs(ROUTES) do
+		for _, t in ipairs(collectTargets(route)) do
+			table.insert(targets, t)
+		end
+	end
+
+		for _, rootPart in ipairs(targets) do
+			tp(rootPart)
+		end
+	
+    running = false
+	gateCycleFinished = true
+end
+
+--========================================================--
+-- GUI
+--========================================================--
+local gui = Instance.new("ScreenGui")
+gui.Name = "WaterfallMenu"
+gui.ResetOnSpawn = false
+gui.Parent = player:WaitForChild("PlayerGui")
+
+local menu = Instance.new("Frame")
+menu.Size = UDim2.fromScale(0.25, 0.06)
+menu.Position = UDim2.fromScale(0.375, 0.05)
+menu.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+menu.BorderSizePixel = 0
+menu.Parent = gui
+Instance.new("UICorner", menu).CornerRadius = UDim.new(0.08, 0)
+
+local grad = Instance.new("UIGradient")
+grad.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(0,180,170)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(30,30,30))
+}
+grad.Rotation = 90
+grad.Parent = menu
+
+local menuLabel = Instance.new("TextLabel")
+menuLabel.Size = UDim2.fromScale(1,1)
+menuLabel.BackgroundTransparency = 1
+menuLabel.Text = "Press (F)"
+menuLabel.TextScaled = true
+menuLabel.Font = Enum.Font.GothamBold
+menuLabel.TextColor3 = Color3.fromRGB(0,200,185)
+menuLabel.Parent = menu
+
+-- line and run button
+local line = Instance.new("Frame")
+line.Size = UDim2.new(menu.Size.X.Scale, 0, 0.003, 0)
+line.Position = menu.Position
+line.BackgroundColor3 = Color3.fromRGB(0,190,180)
+line.BorderSizePixel = 0
+line.Visible = false
+line.Parent = gui
+
+local runButton = Instance.new("TextButton")
+runButton.Size = UDim2.new(menu.Size.X.Scale, 0, menu.Size.Y.Scale * 0.55, 0)
+runButton.Position = menu.Position
+runButton.BackgroundColor3 = menu.BackgroundColor3
+runButton.BackgroundTransparency = 0.15
+runButton.Text = "Running"
+runButton.TextScaled = true
+runButton.Font = Enum.Font.GothamBold
+runButton.TextColor3 = Color3.fromRGB(0,200,185)
+runButton.Visible = false
+runButton.Parent = gui
+Instance.new("UICorner", runButton).CornerRadius = UDim.new(0.08, 0)
+
+-- zombie label for Z
+local zombieButton = Instance.new("TextLabel")
+zombieButton.Size = UDim2.new(runButton.Size.X.Scale, 0, runButton.Size.Y.Scale, 0)
+zombieButton.Position = UDim2.new(runButton.Position.X.Scale, 0, runButton.Position.Y.Scale + runButton.Size.Y.Scale + 0.01, 0)
+zombieButton.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
+zombieButton.Text = "Z when door cycle is done"
+zombieButton.TextScaled = true
+zombieButton.Font = Enum.Font.GothamBold
+zombieButton.TextColor3 = Color3.fromRGB(0,200,185)
+zombieButton.Visible = false
+zombieButton.Parent = gui
+Instance.new("UICorner", zombieButton).CornerRadius = UDim.new(0.08, 0)
+
+--========================================================--
+-- MENU OPEN / CLOSE
+--========================================================--
+local open = false
+local animating = false
+local activeTweens = {}
+
+local lineOpenY   = menu.Position.Y.Scale + menu.Size.Y.Scale
+local buttonOpenY = lineOpenY + (menu.Size.Y.Scale * 0.25)
+local offscreenY  = 1.25
+
+local function killTweens()
+	for _, tween in ipairs(activeTweens) do
+		if tween then tween:Cancel() end
+	end
+	table.clear(activeTweens)
+end
+
+local function openMenu()
+	if animating or open then return end
+	animating = true
+	open = true
+
+	killTweens()
+
+	line.Position = menu.Position
+	runButton.Position = menu.Position
+	zombieButton.Position = UDim2.new(runButton.Position.X.Scale, 0, runButton.Position.Y.Scale + runButton.Size.Y.Scale + 0.01, 0)
+
+	line.Visible = true
+	runButton.Visible = true
+	zombieButton.Visible = true
+
+	local lineTween = TweenService:Create(line, TweenInfo.new(0.8, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(line.Position.X.Scale, 0, lineOpenY, 0)})
+	local btnTween  = TweenService:Create(runButton, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(runButton.Position.X.Scale, 0, buttonOpenY, 0)})
+	local zombieTween = TweenService:Create(zombieButton, TweenInfo.new(1.0, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {Position = UDim2.new(zombieButton.Position.X.Scale, 0, buttonOpenY + runButton.Size.Y.Scale + 0.01, 0)})
+
+	activeTweens = {lineTween, btnTween, zombieTween}
+	lineTween:Play()
+	btnTween:Play()
+	zombieTween:Play()
+
+	btnTween.Completed:Once(function() animating = false end)
+end
+
+local function closeMenu()
+	open = false
+	animating = true
+	killTweens()
+
+	local lineTween = TweenService:Create(line, TweenInfo.new(0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(line.Position.X.Scale, 0, offscreenY, 0)})
+	local btnTween  = TweenService:Create(runButton, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(runButton.Position.X.Scale, 0, offscreenY, 0)})
+	local zombieTween = TweenService:Create(zombieButton, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.In), {Position = UDim2.new(zombieButton.Position.X.Scale, 0, offscreenY, 0)})
+
+	lineTween:Play()
+	btnTween:Play()
+	zombieTween:Play()
+
+	zombieTween.Completed:Once(function()
+		line.Visible = false
+		runButton.Visible = false
+		zombieButton.Visible = false
+		animating = false
+	end)
+end
+
+--========================================================--
+-- INPUT HANDLING
+--========================================================--
+UserInputService.InputBegan:Connect(function(input, gp)
+	if gp then return end
+
+	if input.KeyCode == Enum.KeyCode.F then
+		if not running then
+			openMenu()
+			runRoute()
+		end
+	end
+
+	if gateCycleFinished and input.KeyCode == Enum.KeyCode.Z and not zombieRunning then
+		zombieRunning = true
+		task.spawn(function()
+			local root = getHRP()
+			task.wait(0.5)
+			local repeatCount = 0
+
+			while zombieRunning and repeatCount < 6 do
+				local zombieFolder = workspace:FindFirstChild("Entities") and workspace.Entities:FindFirstChild("Zombie")
+				if not zombieFolder then break end
+				local zombieGroups = zombieFolder:GetChildren()
+				if #zombieGroups == 0 then break end
+
+				for _, zGroup in ipairs(zombieGroups) do
+					if not zombieRunning then break end
+					local hrp = zGroup:FindFirstChild("HumanoidRootPart", true)
+					if hrp then
+						root.CFrame = hrp.CFrame + Vector3.new(0,3,0)
+						task.wait(0.01)
+					end
+				end
+
+				repeatCount = repeatCount + 1
+			end
+
+			zombieRunning = false
+			gateCycleFinished = false
+			closeMenu() -- close menu after Z teleport
+		end)
+	end
+end)
+
+runButton.MouseButton1Click:Connect(runRoute)
