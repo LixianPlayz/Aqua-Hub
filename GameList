@@ -1,5 +1,5 @@
 getgenv().Games = {
-	[6447798030] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Funky%20Friday",
+	[6447798030] = "https://rawscripts.net/raw/Funky-Friday-Fire-Hub-18850",
 	[2636441885] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Speed%20City%20Trillionaire",
 	[4566572536] = "https://raw.githubusercontent.com/Marco8642/science/main/Vehicle%20legends",
 	[3623096087] = "https://raw.githubusercontent.com/AhmadV99/Script-Games/main/Muscle%20Legends.lua",
@@ -7,4 +7,5 @@ getgenv().Games = {
 	[5712833750] = "https://raw.githubusercontent.com/AWdadwdwad2/net/refs/heads/main/h",
 	[16732694052] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Fisch";
 	[86076978383613] = "https://raw.githubusercontent.com/LixianPlayz/Aqua-Hub/refs/heads/main/Hunty%20Zombie%20-%20Island";
+	[6596003198] = "https://rawscripts.net/raw/Universal-Script-Project-Stark-80441";
 }
