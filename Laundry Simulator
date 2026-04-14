@@ -1,0 +1,229 @@
+--// =========================
+--// MONEY
+--// =========================
+local player = game:GetService("Players").LocalPlayer
+
+local function getMoney()
+	return player.leaderstats.Coins.Value
+end
+
+--// =========================
+--// PARSE NUMBERS
+--// =========================
+local function parseNumber(str)
+	str = tostring(str):lower()
+	str = str:gsub("[^%d%.kmbt]", "")
+
+	local num = tonumber(str:match("[%d%.]+"))
+	if not num then return 0 end
+
+	if str:find("k") then return num * 1e3 end
+	if str:find("m") then return num * 1e6 end
+	if str:find("b") then return num * 1e9 end
+	if str:find("t") then return num * 1e12 end
+
+	return num
+end
+
+--// =========================
+--// FORMAT NUMBER (NEW)
+--// =========================
+local function formatNumber(n)
+	n = tonumber(n) or 0
+
+	if n < 100000 then
+		return tostring(math.floor(n))
+	end
+
+	local function shorten(value)
+		if value >= 1e12 then
+			return string.format("%.2ft", value / 1e12)
+		elseif value >= 1e9 then
+			return string.format("%.2fb", value / 1e9)
+		elseif value >= 1e6 then
+			return string.format("%.2fm", value / 1e6)
+		elseif value >= 1e3 then
+			return string.format("%.2fk", value / 1e3)
+		else
+			return tostring(math.floor(value))
+		end
+	end
+
+	return shorten(n)
+end
+
+--// =========================
+--// DATA
+--// =========================
+local washers = {
+	-- NORMAL
+	{"Rusty",1,10,5,"4"},{"Normal",2,20,5,"8"},{"Wooden",3,20,6,"21"},
+	{"Stainless Steel",4,25,6,"42"},{"Brick",5,25,7,"75"},{"Marble",6,25,7,"125"},
+	{"Checkered",9,30,8,"233"},{"Carbon Fibre",13,30,8,"400"},{"Water",15,30,9,"767"},
+	{"Fire",21,35,9,"1358"},{"Camo",30,35,10,"2417"},{"Sprinkles",42,35,10,"4250"},
+	{"Rainbow",55,40,11,"7383"},{"Lava",75,40,11,"12667"},{"Galaxy",100,40,12,"21500"},
+	{"Green Dragon",130,40,12,"35917"},{"Red Dragon",180,45,13,"59333"},
+	{"Bluesteel",260,45,13,"96667"},{"Ruby",350,45,14,"155000"},{"Emerald",510,45,14,"248000"},
+	{"Golden",650,50,15,"390000"},{"Diamond",850,50,15,"606000"},
+
+	-- XL
+	{"XL Rusty",2500,55,20,"933000"},{"XL Normal",3750,55,20,"142000000"},
+	{"XL Wooden",4900,55,22,"215000000"},{"XL Stainless Steel",6950,55,22,"323000000"},
+	{"XL Brick",9000,55,24,"4800000"},{"XL Marble",13500,60,24,"7060000"},
+	{"XL Wavy",17000,60,26,"10300000"},{"XL Cubes",24000,60,26,"15000000"},
+	{"XL Green Paint",31000,60,28,"21500000"},{"XL Floral",44000,60,28,"30700000"},
+	{"XL Zebra",57000,65,30,"43500000"},{"XL Tiger",75000,65,30,"61400000"},
+	{"XL Alien Camo",92000,65,32,"85800000"},{"XL Alien Snakeskin",125000,65,32,"120000000"},
+	{"XL Sprinkles",160000,65,34,"165000000"},{"XL Rainbow",220000,70,34,"226000000"},
+	{"XL Cheese",270000,70,36,"310000000"},{"XL Galaxy",360000,70,36,"420000000"},
+	{"XL Studs",450000,70,38,"566000000"},{"XL Nostalgic Studs",600000,70,38,"761000000"},
+	{"XL Bluesteel",760000,75,40,"1010000000"},{"XL Domino",1000000,75,40,"1350000000"},
+	{"XL Tix",1250000,75,42,"1790000000"},{"XL Robux",1600000,75,42,"2350000000"},
+	{"XL Ruby",2000000,75,44,"3080000000"},{"XL Emerald",2700000,80,44,"4030000000"},
+	{"XL Gold",3300000,80,46,"5240000000"},{"XL Diamond",4200000,80,46,"6770000000"},
+
+	-- XXL
+	{"XXL Rusty",4500000,35,48,"8750000000"},{"XXL Normal",5400000,35,48,"11100000000"},
+	{"XXL Wooden",6600000,35,48,"14300000000"},{"XXL Stainless Steel",8000000,35,48,"18200000000"},
+	{"XXL Brick",9200000,35,50,"23000000000"},{"XXL Cloud Nine",11000000,35,50,"29100000000"},
+	{"XXL Bubbles",14000000,35,50,"36600000000"},{"XXL Nostalgia Logo",18000000,35,50,"46000000000"},
+	{"XXL Ducky",21000000,35,52,"57500000000"},{"XXL Noob Face",26000000,35,52,"71700000000"},
+	{"XXL Russo Blue",32000000,35,52,"89100000000"},{"XXL Pink Camo",39000000,35,52,"110000000000"},
+	{"XXL Giraffe",46000000,35,54,"135000000000"},{"XXL Logo",59000000,38,54,"167000000000"},
+	{"XXL Strawberry",72000000,38,54,"205000000000"},{"XXL Cheese",87000000,38,54,"250000000000"},
+	{"XXL Sprinkles",105000000,38,56,"306000000000"},{"XXL Rainbow",125000000,38,56,"372000000000"},
+	{"XXL Alien Lava",150000000,38,56,"451000000000"},{"XXL Motherboard",180000000,38,56,"547000000000"},
+	{"XXL Doge",205000000,38,58,"660000000000"},{"XXL Dominos",245000000,38,58,"794000000000"},
+	{"XXL Robux",290000000,38,58,"950000000000"},{"XXL Alien",345000000,38,58,"1140000000000"},
+	{"XXL Bluesteel",395000000,38,60,"1360000000000"},{"XXL Ruby",470000000,38,60,"1620000000000"},
+	{"XXL Emerald",550000000,38,60,"1930000000000"},{"XXL Gold",640000000,38,60,"2290000000000"},
+	{"XXL Diamond",720000000,38,62,"2710000000000"},
+
+	-- XXXL
+	{"XXXL Nuclear",1100000000,30,90,"3200000000000"},
+	{"XXXL Epic Zebra",1250000000,30,90,"4870000000000"},
+	{"XXXL Epic Tiger",1450000000,30,90,"5750000000000"},
+	{"XXXL RGB Rainbow",1650000000,30,90,"6750000000000"},
+	{"XXXL Atlantis",1900000000,30,90,"7950000000000"},
+	{"XXXL Zeus",2150000000,30,90,"9250000000000"},
+	{"XXXL Poseidon",2400000000,30,90,"10800000000000"},
+	{"XXXL Volcanic",2750000000,30,90,"12700000000000"},
+	{"XXXL Radioactive",3100000000,30,90,"14800000000000"},
+	{"XXXL Starry Night",3500000000,30,90,"17300000000000"},
+	{"XXXL Hacker",3700000000,30,100,"20000000000000"},
+	{"XXXL Earth",4100000000,30,100,"23300000000000"},
+	{"XXXL Clockwork",5100000000,35,100,"26900000000000"},
+	{"XXXL BIOS",5800000000,35,100,"31100000000000"},
+	{"XXXL XCIV",6500000000,35,100,"35900000000000"},
+	{"XXXL Bluesteel",7300000000,35,100,"41400000000000"},
+	{"XXXL Ruby",8000000000,35,100,"47500000000000"},
+	{"XXXL Emerald",8900000000,35,100,"54600000000000"},
+	{"XXXL Gold",10000000000,35,100,"62600000000000"},
+	{"XXXL Sapphire",11000000000,35,100,"71600000000000"},
+	{"XXXL 100T",12000000000,35,100,"83300000000000"},
+}
+
+-- assign cost properly
+for _,w in ipairs(washers) do
+	w.cost = parseNumber(w[5])
+end
+
+--// =========================
+--// GUI
+--// =========================
+local gui = Instance.new("ScreenGui", player.PlayerGui)
+
+local function makeFrame(title, y)
+	local frame = Instance.new("Frame", gui)
+	frame.Size = UDim2.new(0,260,0,160)
+	frame.Position = UDim2.new(0,10,0,y)
+	frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+
+	local titleLabel = Instance.new("TextLabel", frame)
+	titleLabel.Size = UDim2.new(1,0,0,35)
+	titleLabel.BackgroundTransparency = 1
+	titleLabel.Text = title
+	titleLabel.TextColor3 = Color3.new(1,1,1)
+	titleLabel.TextSize = 20
+	titleLabel.Font = Enum.Font.SourceSansBold
+
+	return frame
+end
+
+local canBuyFrame = makeFrame("BEST YOU CAN BUY",50)
+local nextFrame = makeFrame("NEXT",230)
+
+local function clear(frame)
+	for _,v in ipairs(frame:GetChildren()) do
+		if v:IsA("TextLabel") and v ~= frame:FindFirstChildOfClass("TextLabel") then
+			v:Destroy()
+		end
+	end
+end
+
+local function add(frame,w)
+	local t = Instance.new("TextLabel", frame)
+	t.Position = UDim2.new(0,0,0,35)
+	t.Size = UDim2.new(1,0,0,100)
+	t.BackgroundTransparency = 1
+	t.TextColor3 = Color3.new(1,1,1)
+	t.TextWrapped = true
+	t.Font = Enum.Font.SourceSansBold
+	t.TextSize = 22
+
+	t.Text = string.format(
+		"%s\nx%d | %ss | Cap:%d\n$%s",
+		w[1],
+		w[2],
+		w[3],
+		w[4],
+		formatNumber(w.cost)
+	)
+end
+
+--// =========================
+--// LOOP
+--// =========================
+while true do
+	task.wait(0.5)
+
+	local money = getMoney()
+
+	clear(canBuyFrame)
+	clear(nextFrame)
+
+	local best
+	for _,w in ipairs(washers) do
+		if money >= w.cost then
+			best = w
+		else
+			break
+		end
+	end
+
+	if best then
+		add(canBuyFrame, best)
+	end
+
+	local nextW
+	for _,w in ipairs(washers) do
+		if money < w.cost then
+			nextW = w
+			break
+		end
+	end
+
+	if nextW then
+		add(nextFrame, nextW)
+
+		local need = Instance.new("TextLabel", nextFrame)
+		need.Position = UDim2.new(0,0,0,110)
+		need.Size = UDim2.new(1,0,0,25)
+		need.BackgroundTransparency = 1
+		need.TextColor3 = Color3.fromRGB(255,100,100)
+		need.TextSize = 20
+		need.Font = Enum.Font.SourceSansBold
+
+		need.Text = "Need: $" .. formatNumber(nextW.cost - money)
+	end
+end
