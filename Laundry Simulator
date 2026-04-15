@@ -1,18 +1,15 @@
---// =========================
---// MONEY
---// =========================
-local player = game:GetService("Players").LocalPlayer
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+
+local leaderstats = player:WaitForChild("leaderstats")
+local coins = leaderstats:WaitForChild("Coins")
 
 local function getMoney()
-	return player.leaderstats.Coins.Value
+	return coins.Value
 end
 
---// =========================
---// PARSE NUMBERS
---// =========================
 local function parseNumber(str)
-	str = tostring(str):lower()
-	str = str:gsub("[^%d%.kmbt]", "")
+	str = tostring(str):lower():gsub("[^%d%.kmbt]", "")
 
 	local num = tonumber(str:match("[%d%.]+"))
 	if not num then return 0 end
@@ -25,36 +22,24 @@ local function parseNumber(str)
 	return num
 end
 
---// =========================
---// FORMAT NUMBER (NEW)
---// =========================
 local function formatNumber(n)
 	n = tonumber(n) or 0
 
 	if n < 100000 then
 		return tostring(math.floor(n))
+	elseif n >= 1e12 then
+		return string.format("%.2ft", n / 1e12)
+	elseif n >= 1e9 then
+		return string.format("%.2fb", n / 1e9)
+	elseif n >= 1e6 then
+		return string.format("%.2fm", n / 1e6)
+	elseif n >= 1e3 then
+		return string.format("%.2fk", n / 1e3)
 	end
 
-	local function shorten(value)
-		if value >= 1e12 then
-			return string.format("%.2ft", value / 1e12)
-		elseif value >= 1e9 then
-			return string.format("%.2fb", value / 1e9)
-		elseif value >= 1e6 then
-			return string.format("%.2fm", value / 1e6)
-		elseif value >= 1e3 then
-			return string.format("%.2fk", value / 1e3)
-		else
-			return tostring(math.floor(value))
-		end
-	end
-
-	return shorten(n)
+	return tostring(math.floor(n))
 end
 
---// =========================
---// DATA
---// =========================
 local washers = {
 	-- NORMAL
 	{"Rusty",1,10,5,"4"},{"Normal",2,20,5,"8"},{"Wooden",3,20,6,"21"},
@@ -123,55 +108,56 @@ local washers = {
 	{"XXXL 100T",12000000000,35,100,"83300000000000"},
 }
 
--- assign cost properly
-for _,w in ipairs(washers) do
-	w.cost = parseNumber(w[5])
+for i = 1, #washers do
+	washers[i].cost = parseNumber(washers[i][5])
 end
 
---// =========================
---// GUI
---// =========================
-local gui = Instance.new("ScreenGui", player.PlayerGui)
+local gui = Instance.new("ScreenGui")
+gui.Parent = player:WaitForChild("PlayerGui")
 
 local function makeFrame(title, y)
-	local frame = Instance.new("Frame", gui)
-	frame.Size = UDim2.new(0,260,0,160)
-	frame.Position = UDim2.new(0,10,0,y)
-	frame.BackgroundColor3 = Color3.fromRGB(25,25,25)
+	local frame = Instance.new("Frame")
+	frame.Size = UDim2.fromOffset(260, 160)
+	frame.Position = UDim2.new(0, 10, 0, y)
+	frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+	frame.Parent = gui
 
-	local titleLabel = Instance.new("TextLabel", frame)
-	titleLabel.Size = UDim2.new(1,0,0,35)
+	local titleLabel = Instance.new("TextLabel")
+	titleLabel.Size = UDim2.new(1, 0, 0, 35)
 	titleLabel.BackgroundTransparency = 1
 	titleLabel.Text = title
-	titleLabel.TextColor3 = Color3.new(1,1,1)
+	titleLabel.TextColor3 = Color3.new(1, 1, 1)
 	titleLabel.TextSize = 20
 	titleLabel.Font = Enum.Font.SourceSansBold
+	titleLabel.Parent = frame
 
-	return frame
+	local content = Instance.new("TextLabel")
+	content.Position = UDim2.new(0, 0, 0, 35)
+	content.Size = UDim2.new(1, 0, 0, 100)
+	content.BackgroundTransparency = 1
+	content.TextColor3 = Color3.new(1, 1, 1)
+	content.TextWrapped = true
+	content.Font = Enum.Font.SourceSansBold
+	content.TextSize = 22
+	content.Parent = frame
+
+	return frame, content
 end
 
-local canBuyFrame = makeFrame("BEST YOU CAN BUY",50)
-local nextFrame = makeFrame("NEXT",230)
+local bestFrame, bestLabel = makeFrame("BEST YOU CAN BUY", 50)
+local nextFrame, nextLabel = makeFrame("NEXT", 230)
 
-local function clear(frame)
-	for _,v in ipairs(frame:GetChildren()) do
-		if v:IsA("TextLabel") and v ~= frame:FindFirstChildOfClass("TextLabel") then
-			v:Destroy()
-		end
-	end
-end
+local needLabel = Instance.new("TextLabel")
+needLabel.Position = UDim2.new(0, 0, 0, 110)
+needLabel.Size = UDim2.new(1, 0, 0, 25)
+needLabel.BackgroundTransparency = 1
+needLabel.TextColor3 = Color3.fromRGB(255, 100, 100)
+needLabel.TextSize = 20
+needLabel.Font = Enum.Font.SourceSansBold
+needLabel.Parent = nextFrame
 
-local function add(frame,w)
-	local t = Instance.new("TextLabel", frame)
-	t.Position = UDim2.new(0,0,0,35)
-	t.Size = UDim2.new(1,0,0,100)
-	t.BackgroundTransparency = 1
-	t.TextColor3 = Color3.new(1,1,1)
-	t.TextWrapped = true
-	t.Font = Enum.Font.SourceSansBold
-	t.TextSize = 22
-
-	t.Text = string.format(
+local function formatWasher(w)
+	return string.format(
 		"%s\nx%d | %ss | Cap:%d\n$%s",
 		w[1],
 		w[2],
@@ -181,49 +167,28 @@ local function add(frame,w)
 	)
 end
 
---// =========================
---// LOOP
---// =========================
 while true do
 	task.wait(0.5)
 
 	local money = getMoney()
+	local best, nextW
 
-	clear(canBuyFrame)
-	clear(nextFrame)
-
-	local best
-	for _,w in ipairs(washers) do
+	for i = 1, #washers do
+		local w = washers[i]
 		if money >= w.cost then
 			best = w
 		else
-			break
-		end
-	end
-
-	if best then
-		add(canBuyFrame, best)
-	end
-
-	local nextW
-	for _,w in ipairs(washers) do
-		if money < w.cost then
 			nextW = w
 			break
 		end
 	end
 
+	bestLabel.Text = best and formatWasher(best) or ""
+	nextLabel.Text = nextW and formatWasher(nextW) or ""
+
 	if nextW then
-		add(nextFrame, nextW)
-
-		local need = Instance.new("TextLabel", nextFrame)
-		need.Position = UDim2.new(0,0,0,110)
-		need.Size = UDim2.new(1,0,0,25)
-		need.BackgroundTransparency = 1
-		need.TextColor3 = Color3.fromRGB(255,100,100)
-		need.TextSize = 20
-		need.Font = Enum.Font.SourceSansBold
-
-		need.Text = "Need: $" .. formatNumber(nextW.cost - money)
+		needLabel.Text = "Need: $" .. formatNumber(nextW.cost - money)
+	else
+		needLabel.Text = ""
 	end
 end
